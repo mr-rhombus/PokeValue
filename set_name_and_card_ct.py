@@ -41,23 +41,28 @@ def expansions_names(soup):
     return expansions_names
 
 
-# TODO: Extend to special expansions, black star promos, POP Series, McDonald's Collections
-def expansion_sets(soup, expansion_name):
+def expansion_set_names_and_urls(soup, expansion_name) -> dict:
     """
     Accepts the soup scraped from the bulbapedia_sets_url and returns a list of set names in
     the given expansion.
     Args:
         soup: The soup scraped from the bulbapedia url
     Returns:
-        set_names: A list of set names from the selected expansion
+        set_names_and_urls (dict): A dictionary of the form {'set_names': [set1, set2, ...], 
+        'set_urls': [url1, url2, ...]}
     """
+    # Find the header with the expansion name in it
     expansion_name_h2 = soup.find('span', id=expansion_name).parent
     # The <table> containing all sets will appear directly beneath the <h2> tag containing
     # the expansion name
     expansion_set_table = expansion_name_h2.findNext('table')
     set_hypertext_tags = expansion_set_table.find_all(title=re.compile('(TCG)'))
     set_names = [el.string for el in set_hypertext_tags]
-    return set_names
+    set_urls = [el['href'] for el in set_hypertext_tags]
+    set_names_and_urls = {}
+    set_names_and_urls['set_names'] = set_names
+    set_names_and_urls['set_urls'] = set_urls
+    return set_names_and_urls
 
 
 '''------- script -------'''
@@ -65,6 +70,7 @@ soup = url_to_soup(bulbapedia_sets_url)
 expans_names = expansions_names(soup)
 expansions_dict = {}
 for expansion in expans_names:
-    expansions_dict[expansion] = expansion_sets(soup, expansion)
+    set_names_and_urls_dict = expansion_set_names_and_urls(soup, expansion)
+    expansions_dict[expansion] = set_names_and_urls_dict
 print(expansions_dict)
 # %%
