@@ -41,28 +41,47 @@ def expansions_names(soup):
     return expansions_names
 
 
-def expansion_set_names_and_urls(soup, expansion_name) -> dict:
+def table_after_h2(soup, span_id: str):
     """
-    Accepts the soup scraped from the bulbapedia_sets_url and returns a list of set names in
-    the given expansion.
+    Accepts the soup scraped from the bulbapedia_sets_url and returns following table
+    element. The format of interest here is <h2><span id=span_id></span></h2><table>...
     Args:
         soup: The soup scraped from the bulbapedia url
+        span_id: The id of the span within the h2 tag preceding the table of interest
     Returns:
+        next_table: A bs4.BeautifulSoup class containing the table element of interest
+
         set_names_and_urls (dict): A dictionary of the form {'set_names': [set1, set2, ...], 
         'set_urls': [url1, url2, ...]}
     """
     # Find the header with the expansion name in it
-    expansion_name_h2 = soup.find('span', id=expansion_name).parent
+    h2_element = soup.find('span', id={span_id}).parent
     # The <table> containing all sets will appear directly beneath the <h2> tag containing
     # the expansion name
-    expansion_set_table = expansion_name_h2.findNext('table')
-    set_hypertext_tags = expansion_set_table.find_all(title=re.compile('(TCG)'))
+    next_table = h2_element.findNext('table')
+    return next_table
+
+
+def set_names_and_urls(bs4_table):
+    """
+    Parses through a <table> element and extracts the set name and url on Bulbapedia
+    Args:
+        bs4_table: A bs4.BeautifulSoup object representing the table of interest
+    Returns:
+        set_names_and_urls_dict (dict): A dictionary with the set name and url
+    """
+    set_hypertext_tags = bs4_table.find_all(title=re.compile('(TCG)'))
     set_names = [el.string for el in set_hypertext_tags]
     set_urls = [el['href'] for el in set_hypertext_tags]
-    set_names_and_urls = {}
-    set_names_and_urls['set_names'] = set_names
-    set_names_and_urls['set_urls'] = set_urls
-    return set_names_and_urls
+    set_names_and_urls_dict = {}
+    set_names_and_urls_dict['set_names'] = set_names
+    set_names_and_urls_dict['set_urls'] = set_urls
+    return set_names_and_urls_dict
+
+
+def card_name_and_num(bs4_table):
+    # TODO: search td.strings for a '/'. Then find card somehow, maybe a regex looking
+    # for open and close parentheses?
 
 
 '''------- script -------'''
@@ -70,7 +89,8 @@ soup = url_to_soup(bulbapedia_sets_url)
 expans_names = expansions_names(soup)
 expansions_dict = {}
 for expansion in expans_names:
-    set_names_and_urls_dict = expansion_set_names_and_urls(soup, expansion)
-    expansions_dict[expansion] = set_names_and_urls_dict
+    bs4_table = table_after_h2(soup, expansion)
+    sets_and_urls = set_names_and_urls(bs4_table)
+    expansions_dict[expansion] = sets_and_urls
 print(expansions_dict)
 # %%
