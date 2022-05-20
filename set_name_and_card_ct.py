@@ -12,6 +12,49 @@ bulbapedia_base_url = 'https://bulbapedia.bulbagarden.net'
 bulbapedia_sets_url = bulbapedia_base_url + '/wiki/List_of_Pok%C3%A9mon_Trading_Card_Game_expansions'
 
 
+'''------- classes -------'''
+class Soup:
+    """
+    A class representing the bs4.BeautifulSoup object scraped from a webpage
+
+    Attributes
+    ----------
+    soup : bs4.BeautifulSoup
+        Represents the soup itself
+
+    Methods
+    -------
+    expansion_names()
+        Returns a list of expansion names from the bulbapedia sets url
+    table_after_h2(span_id)
+        Returns the table element immediately after a span element with a specified id. The
+        format of interest is <h2><span id=span_id></span></h2><table>...
+    """
+
+    def __init__(self, soup):
+        self.soup = soup
+
+    def expansion_names(self):
+        expansions_names = []
+        for el in self.soup.find_all('span', class_='mw-headline'):
+            element_id = el.get('id')
+            expansions_names.append(element_id)
+        return expansions_names
+
+    def table_after_h2(self, span_id):
+        """
+        Args
+        ----
+        span_id : str
+            The id of a span element within an h2 tag preceding the table of interest
+        """
+        h2_element = self.soup.find('span', id=span_id).parent
+        # The <table> containing all sets will appear directly beneath the <h2> tag containing
+        # the expansion name
+        next_table = h2_element.findNext('table')
+        return next_table
+
+
 '''------- functions -------'''
 def url_to_soup(url: str):
     """
@@ -24,43 +67,6 @@ def url_to_soup(url: str):
     request = requests.get(url, verify=False)
     soup = BeautifulSoup(request.text, 'html.parser')
     return soup
-
-
-def expansions_names(soup):
-    """
-    Accepts the soup scraped from bulbapedia_sets_url and returns a list of expansion names.
-    Args:
-        soup: The soup scraped from bulbapedia_sets_url
-    Returns:
-        expansions_names (list): A list of expansion names
-    """
-    expansions_names = []
-    for el in soup.find_all('span', class_='mw-headline'):
-        element_id = el.get('id')
-        expansions_names.append(element_id)
-    return expansions_names
-
-
-def table_after_h2(soup, span_id: str):
-    """
-    Accepts the soup scraped from the bulbapedia_sets_url and returns following table
-    element. The format of interest here is <h2><span id=span_id></span></h2><table>...
-    Args:
-        soup: The soup scraped from the bulbapedia url
-        span_id: The id of the span within the h2 tag preceding the table of interest
-    Returns:
-        next_table: A bs4.BeautifulSoup class containing the table element of interest
-
-        set_names_and_urls (dict): A dictionary of the form {'set_names': [set1, set2, ...], 
-        'set_urls': [url1, url2, ...]}
-    """
-    # Find the header with the expansion name in it
-    h2_element = soup.find('span', id={span_id}).parent
-    # The <table> containing all sets will appear directly beneath the <h2> tag containing
-    # the expansion name
-    next_table = h2_element.findNext('table')
-    return next_table
-
 
 def set_names_and_urls(bs4_table):
     """
@@ -79,17 +85,18 @@ def set_names_and_urls(bs4_table):
     return set_names_and_urls_dict
 
 
-def card_name_and_num(bs4_table):
+# def card_name_and_num(bs4_table):
     # TODO: search td.strings for a '/'. Then find card somehow, maybe a regex looking
     # for open and close parentheses?
 
 
 '''------- script -------'''
 soup = url_to_soup(bulbapedia_sets_url)
-expans_names = expansions_names(soup)
+bulbapedia_expansions_soup = Soup(soup)
+expans_names = bulbapedia_expansions_soup.expansion_names()
 expansions_dict = {}
 for expansion in expans_names:
-    bs4_table = table_after_h2(soup, expansion)
+    bs4_table = bulbapedia_expansions_soup.table_after_h2(span_id = expansion)
     sets_and_urls = set_names_and_urls(bs4_table)
     expansions_dict[expansion] = sets_and_urls
 print(expansions_dict)
