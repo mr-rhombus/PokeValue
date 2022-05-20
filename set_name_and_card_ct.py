@@ -54,6 +54,28 @@ class Soup:
         next_table = h2_element.findNext('table')
         return next_table
 
+class Set:
+    """
+    A class representing a Pokemon Card set
+
+    Attributes
+    ----------
+    name : str
+        Name of the set
+    url : str
+        URL to page on Bulbapedia site
+    expansion: str
+        The expansion the set belongs to
+    card_ct: int
+        The number of cards in the set
+    """
+
+    def __init__(self, name, url, expansion, card_ct):
+        self.name = name
+        self.url = bulbapedia_base_url + url
+        self.expansion = expansion
+        self.card_ct = card_ct
+
 
 '''------- functions -------'''
 def url_to_soup(url: str):
@@ -76,13 +98,11 @@ def set_names_and_urls(bs4_table):
     Returns:
         set_names_and_urls_dict (dict): A dictionary with the set name and url
     """
-    set_hypertext_tags = bs4_table.find_all(title=re.compile('(TCG)'))
-    set_names = [el.string for el in set_hypertext_tags]
-    set_urls = [el['href'] for el in set_hypertext_tags]
-    set_names_and_urls_dict = {}
-    set_names_and_urls_dict['set_names'] = set_names
-    set_names_and_urls_dict['set_urls'] = set_urls
-    return set_names_and_urls_dict
+    hypertext_tags = bs4_table.find_all(title=re.compile('(TCG)'))
+    names = [el.string for el in hypertext_tags]
+    url_extensions = [el['href'] for el in hypertext_tags]
+    names_and_url_extensions = dict(zip(names, url_extensions))
+    return names_and_url_extensions
 
 
 # def card_name_and_num(bs4_table):
@@ -94,10 +114,19 @@ def set_names_and_urls(bs4_table):
 soup = url_to_soup(bulbapedia_sets_url)
 bulbapedia_expansions_soup = Soup(soup)
 expans_names = bulbapedia_expansions_soup.expansion_names()
-expansions_dict = {}
+sets = {}
 for expansion in expans_names:
-    bs4_table = bulbapedia_expansions_soup.table_after_h2(span_id = expansion)
-    sets_and_urls = set_names_and_urls(bs4_table)
-    expansions_dict[expansion] = sets_and_urls
-print(expansions_dict)
+    expansion_tbl = bulbapedia_expansions_soup.table_after_h2(span_id = expansion)
+    names_and_url_extensions = set_names_and_urls(expansion_tbl)
+    for k,v in names_and_url_extensions.items():
+        new_set = Set(k, v, expansion, 'N/A')
+        sets[k] = new_set
+
+base_set = sets['Base Set']
+base_set_soup = url_to_soup(base_set.url)
+x = base_set_soup.find_all(string=re.compile('^\d+\/\d+$'), limit=1)  # Match first #/### instance
+card_ct = x[0].strip()
+base_set.card_ct = card_ct
+print(base_set.card_ct)
+# TODO: Update __repr__ dunder method to print name, expansion, card ct
 # %%
