@@ -76,6 +76,9 @@ class Set:
         self.expansion = expansion
         self.card_ct = card_ct
 
+    def __str__(self):
+        return f'The {self.name} has {self.card_ct} cards, and is part of {self.expansion}'
+
 
 '''------- functions -------'''
 def url_to_soup(url: str):
@@ -104,6 +107,28 @@ def set_names_and_urls(bs4_table):
     names_and_url_extensions = dict(zip(names, url_extensions))
     return names_and_url_extensions
 
+def card_count(set_: Set) -> int:
+    """
+    Takes a Set object and returns the card count in the set
+    Args:
+        set (Set): A set object representing an expansion set scraped from Bulbapedia
+    Returns:
+        card_ct (int): The total # of cards in the set
+    """
+    soup = url_to_soup(set_.url)
+    card_num = soup.find_all(string=re.compile('^\d+\/\d+$'), limit=1)  # Match first #/### instance
+    try:
+        card_ct = card_num[0].strip().split('/')[1]
+    # HACK: Handles sets with no card counts in Bulbapedia page
+    except:
+        card_ct = None
+    return card_ct
+
+def card_names(set_: Set):
+    soup = url_to_soup(set_.url)
+    name = set_.name
+
+
 
 # def card_name_and_num(bs4_table):
     # TODO: search td.strings for a '/'. Then find card somehow, maybe a regex looking
@@ -122,11 +147,12 @@ for expansion in expans_names:
         new_set = Set(k, v, expansion, 'N/A')
         sets[k] = new_set
 
-base_set = sets['Base Set']
-base_set_soup = url_to_soup(base_set.url)
-x = base_set_soup.find_all(string=re.compile('^\d+\/\d+$'), limit=1)  # Match first #/### instance
-card_ct = x[0].strip()
-base_set.card_ct = card_ct
-print(base_set.card_ct)
-# TODO: Update __repr__ dunder method to print name, expansion, card ct
+# for set_ in sets.values():
+#     set_.card_ct = card_count(set_)
+
+# TODO: Drill down to get card name and num. Search for "Set list(s)" h2. Span id = "Set_list(s)",
+# then grab following table -> use table_after_h2 fn. Then walk through table and apply #/###
+# pattern!
+
+print(sets['Base Set'])
 # %%
