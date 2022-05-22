@@ -13,7 +13,7 @@ bulbapedia_sets_url = bulbapedia_base_url + '/wiki/List_of_Pok%C3%A9mon_Trading_
 
 
 '''------- classes -------'''
-class Soup:
+class WebpageSoup:
     """
     A class representing the bs4.BeautifulSoup object scraped from a webpage
 
@@ -55,6 +55,37 @@ class Soup:
         next_table = h2_element.findNext('table')
         return next_table
 
+
+class TableSoup:
+    """
+    A class representing the bs4.BeautifulSoup object of a table element
+
+    Attributes
+    ----------
+    table : bs4.BeautifulSoup
+        The table element
+
+    Methods
+    -------
+    set_names()
+        Returns a list of set names from a table on the Bulbapedia expansions page
+    url_extensions()
+        Returns a list of set url extensions from a table on the Bulbapedia expansions page
+    """
+    def __init__(self, table):
+        self.table = table
+    
+    def set_names(self) -> str:
+        hypertext_tags = self.table.find_all(title=re.compile('(TCG)'))
+        names = [el.string for el in hypertext_tags]
+        return names
+
+    def url_extensions(self) -> str:
+        hypertext_tags = (self.table.find_all(title=re.compile('(TCG)')))
+        url_extensions = [el['href'] for el in hypertext_tags]
+        return url_extensions
+
+
 class Set:
     """
     A class representing a Pokemon Card set
@@ -77,8 +108,8 @@ class Set:
         self.expansion = expansion
         self.card_ct = card_ct
 
-    def __str__(self):
-        return f'The {self.name} has {self.card_ct} cards, and is part of {self.expansion}'
+    def __repr__(self):
+        return self.name
 
 
 '''------- functions -------'''
@@ -93,20 +124,6 @@ def url_to_soup(url: str):
     request = requests.get(url, verify=False)
     soup = BeautifulSoup(request.text, 'html.parser')
     return soup
-
-def set_names_and_urls(bs4_table):
-    """
-    Parses through a <table> element and extracts the set name and url on Bulbapedia
-    Args:
-        bs4_table: A bs4.BeautifulSoup object representing the table of interest
-    Returns:
-        set_names_and_urls_dict (dict): A dictionary with the set name and url
-    """
-    hypertext_tags = bs4_table.find_all(title=re.compile('(TCG)'))
-    names = [el.string for el in hypertext_tags]
-    url_extensions = [el['href'] for el in hypertext_tags]
-    names_and_url_extensions = dict(zip(names, url_extensions))
-    return names_and_url_extensions
 
 def card_count(set_: Set) -> int:
     """
@@ -130,41 +147,39 @@ def card_names(set_: Set):
     name = set_.name
 
 
-
-# def card_name_and_num(bs4_table):
-    # TODO: search td.strings for a '/'. Then find card somehow, maybe a regex looking
-    # for open and close parentheses?
-
-
 '''------- script -------'''
-soup = url_to_soup(bulbapedia_sets_url)
-bulbapedia_expansions_soup = Soup(soup)
-expans_names = bulbapedia_expansions_soup.expansion_names()
+homepage_soup = url_to_soup(bulbapedia_sets_url)
+homepage = WebpageSoup(homepage_soup)
+expans_names = homepage.expansion_names()
 sets = {}
+
 for expansion in expans_names:
-    expansion_tbl = bulbapedia_expansions_soup.table_after_h2(span_id = expansion)
-    names_and_url_extensions = set_names_and_urls(expansion_tbl)
-    for k,v in names_and_url_extensions.items():
-        new_set = Set(k, v, expansion, 'N/A')
-        sets[k] = new_set
+    expansion_table = homepage.table_after_h2(span_id = expansion)
+    table_soup = TableSoup(expansion_table)
+    set_names = table_soup.set_names()
+    url_extensions = table_soup.url_extensions()
+    names_and_url_extensions = dict(zip(set_names, url_extensions))
+    for set_,ext in names_and_url_extensions.items():
+        url = bulbapedia_base_url + ext
+        new_set = Set(name=set_, url=url, expansion=expansion, card_ct='N/A')
+        sets[set_] = new_set
 
-# for set_ in sets.values():
-#     set_.card_ct = card_count(set_)
+# # for set_ in sets.values():
+# #     set_.card_ct = card_count(set_)
 
-# TODO: Drill down to get card name and num. Search for "Set list(s)" h2. Span id = "Set_list(s)",
-# then grab following table -> use table_after_h2 fn. Then walk through table and apply #/###
-# pattern!
-set_ = sets['Base Set']
-set_name = set_.name
-set_url = set_.url
-set_soup = Soup(url_to_soup(set_url))
-cards_tbl = set_soup.table_after_h2(span_id = 'Set_list')
-cards = cards_tbl.find_all('a', title = re.compile(set_name))
-for card in cards:
-    # title="<card_name> (set_name <card_num>)"
-    title = card['title']
-    title_split = title.split('(')
-    card_name = title_split[0][:-1]
-    card_num = re.search('\d+', title_split[1].replace(')', ''))[0]
-    print(card_name, card_num)
+# # TODO: Create card class to capture name and num (and eventually price?). Turn card finder
+# # into a function. Maybe turn table into a class with "find_sets" and "find_cards" as methods?
+# set_ = sets['Base Set']
+# set_name = set_.name
+# set_url = set_.url
+# set_soup = Soup(url_to_soup(set_url))
+# cards_tbl = set_soup.table_after_h2(span_id = 'Set_list')
+# cards = cards_tbl.find_all('a', title = re.compile(set_name))
+# for card in cards:
+#     # title="<card_name> (set_name <card_num>)"
+#     title = card['title']
+#     title_split = title.split('(')
+#     card_name = title_split[0][:-1]
+#     card_num = re.search('\d+', title_split[1].replace(')', ''))[0]
+#     print(card_name, card_num)
 # %%
