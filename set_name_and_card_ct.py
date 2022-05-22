@@ -48,7 +48,8 @@ class Soup:
         span_id : str
             The id of a span element within an h2 tag preceding the table of interest
         """
-        h2_element = self.soup.find('span', id=span_id).parent
+        re_match = f'{span_id}.*?'
+        h2_element = self.soup.find('span', id=re.compile(re_match)).parent
         # The <table> containing all sets will appear directly beneath the <h2> tag containing
         # the expansion name
         next_table = h2_element.findNext('table')
@@ -153,6 +154,17 @@ for expansion in expans_names:
 # TODO: Drill down to get card name and num. Search for "Set list(s)" h2. Span id = "Set_list(s)",
 # then grab following table -> use table_after_h2 fn. Then walk through table and apply #/###
 # pattern!
-
-print(sets['Base Set'])
+set_ = sets['Base Set']
+set_name = set_.name
+set_url = set_.url
+set_soup = Soup(url_to_soup(set_url))
+cards_tbl = set_soup.table_after_h2(span_id = 'Set_list')
+cards = cards_tbl.find_all('a', title = re.compile(set_name))
+for card in cards:
+    # title="<card_name> (set_name <card_num>)"
+    title = card['title']
+    title_split = title.split('(')
+    card_name = title_split[0][:-1]
+    card_num = re.search('\d+', title_split[1].replace(')', ''))[0]
+    print(card_name, card_num)
 # %%
