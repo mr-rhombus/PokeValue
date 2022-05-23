@@ -80,10 +80,10 @@ class TableSoup:
         names = [el.string for el in hypertext_tags]
         return names
 
-    def url_extensions(self) -> str:
+    def set_urls(self) -> str:
         hypertext_tags = (self.table.find_all(title=re.compile('(TCG)')))
-        url_extensions = [el['href'] for el in hypertext_tags]
-        return url_extensions
+        urls = [el['href'] for el in hypertext_tags]
+        return urls
 
 
 class Set:
@@ -101,15 +101,43 @@ class Set:
     card_ct: int
         The number of cards in the set
     """
-
-    def __init__(self, name, url, expansion, card_ct):
+    def __init__(self, name, url, expansion, card_ct, cards):
         self.name = name
         self.url = bulbapedia_base_url + url
         self.expansion = expansion
         self.card_ct = card_ct
+        self.cards = cards
 
     def __repr__(self):
         return self.name
+
+
+class Card:
+    """
+    A class representing an individual Pokemon card
+
+    Attributes
+    ----------
+    name : str
+        The card name
+    number : int
+        The card number
+    set_ct : int
+        The number of cards in the set the card belongs to
+    set_name : str
+        The name of the set the card belongs to
+    expansion_name : str
+        The name of the expansion the card belongs to
+    """
+    def __init__(self, name, number, set_ct, set_name, expansion_name):
+        self.name = name
+        self.number = number
+        self.set_ct = set_ct
+        self.set_name = set_name
+        self.expansion_name = expansion_name
+
+    def __repr__(self):
+        return f'{self.name} {self.number}/{self.set_ct}'
 
 
 '''------- functions -------'''
@@ -142,9 +170,25 @@ def card_count(set_: Set) -> int:
         card_ct = None
     return card_ct
 
-def card_names(set_: Set):
-    soup = url_to_soup(set_.url)
-    name = set_.name
+def get_cards(table_soup, set_name: str) -> dict:
+    """
+    Accepts a TableSoup object and parses it for the list of card anchor tags
+    """
+    cards = table_soup.table.find_all('a', title = re.compile(set_name))
+    for card in cards:
+        try:
+            title = card['title']
+            title_split = title.split('(')
+            card_name = title_split[0][:-1]
+            card_num = re.search('\d+', title_split[1].replace(')', ''))[0]
+            new_card = Card(
+                name=card_name, number=card_num, set_ct=card_ct, set_name=set_.name, expansion_name=set_.expansion
+            )
+            yield new_card
+        # HACK: Handles table elements with both EN and JP table element children. The JP table
+        # elements do not have card #s, so the card_num line will fail otherwise.
+        except TypeError:
+            break
 
 
 '''------- script -------'''
@@ -157,29 +201,28 @@ for expansion in expans_names:
     expansion_table = homepage.table_after_h2(span_id = expansion)
     table_soup = TableSoup(expansion_table)
     set_names = table_soup.set_names()
-    url_extensions = table_soup.url_extensions()
-    names_and_url_extensions = dict(zip(set_names, url_extensions))
-    for set_,ext in names_and_url_extensions.items():
-        url = bulbapedia_base_url + ext
-        new_set = Set(name=set_, url=url, expansion=expansion, card_ct='N/A')
+    urls = table_soup.set_urls()
+    names_and_urls = dict(zip(set_names, urls))
+    for set_,url in names_and_urls.items():
+        new_set = Set(name=set_, url=url, expansion=expansion, card_ct=None, cards=[])
         sets[set_] = new_set
 
-# # for set_ in sets.values():
-# #     set_.card_ct = card_count(set_)
+# TODO: create expansion class, add Set obj maybe?
+# BUG: Base Set 2 all cards #s = 2
+# BUG: connection timeout
 
-# # TODO: Create card class to capture name and num (and eventually price?). Turn card finder
-# # into a function. Maybe turn table into a class with "find_sets" and "find_cards" as methods?
-# set_ = sets['Base Set']
-# set_name = set_.name
-# set_url = set_.url
-# set_soup = Soup(url_to_soup(set_url))
-# cards_tbl = set_soup.table_after_h2(span_id = 'Set_list')
-# cards = cards_tbl.find_all('a', title = re.compile(set_name))
-# for card in cards:
-#     # title="<card_name> (set_name <card_num>)"
-#     title = card['title']
-#     title_split = title.split('(')
-#     card_name = title_split[0][:-1]
-#     card_num = re.search('\d+', title_split[1].replace(')', ''))[0]
-#     print(card_name, card_num)
+for set_ in sets.values():
+    if set_.cards == None:
+        # Check Base Set 2 here
+        card_ct = card_count(set_)
+        set_.card_ct = card_ct
+        set_name = set_.name
+        set_url = set_.url
+        set_soup = WebpageSoup(url_to_soup(set_url))
+        cards_table = set_soup.table_after_h2(span_id = 'Set_list')
+        cards_soup = TableSoup(cards_table)
+        cards = get_cards(cards_soup, set_.name)
+        for card in cards:
+            set_.cards.append(card)
+            print(card.name, card.number)
 # %%
