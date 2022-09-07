@@ -47,7 +47,7 @@ class Card:
 class SetPage:
     def __init__(self, page_source):
         self.etree = etree.HTML(page_source)
-        self.card_row_locator = ".//tr[contains(text(), '/')]/.."
+        self.card_row_locator = ".//tr//text() == '/')]/.."
         self.set_number_locator = ".//tr[contains(text(), '/')]"
 
     @property
