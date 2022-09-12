@@ -1,22 +1,16 @@
 from components import web
+import constants
 
-
-serebii_base_url = 'https://www.serebii.net'
-english_expansions_url = serebii_base_url + '/card/english.shtml'
-
-
-english_sets_page = web.AllSetsPage(english_expansions_url)
-print(english_sets_page.url)
-print(english_sets_page.html.xpath("//body/div[@id='wrapper']"))
-# print(english_sets_page.r.text)
 
 
 # def main():
-#     english_sets_page = web.AllSetsPage(english_expansions_url)
-#     astral_radiance_meta = english_sets_page.get_expansion_names_and_urls()[3]
-#     astral_radiance = web.SetPage(astral_radiance_meta.url)
-#     astral_radiance.card_count = astral_radiance.set_count
-#     astral_radiance.cards = astral_radiance.get_cards()
+english_sets_page = web.AllSetsPage(constants.english_expansions_url)
+astral_radiance_expansion = english_sets_page.get_expansion_names_and_urls()[3]
+astral_radiance_page = web.SetPage(astral_radiance_expansion.url)
+astral_radiance_expansion.card_count = astral_radiance_page.set_count
+# print(astral_radiance_page.html.xpath("//tr/td[contains(text(), '/')]/.."))
+astral_radiance_expansion.cards = astral_radiance_page.get_cards()
+print(astral_radiance_expansion.cards[0])
 #     print(astral_radiance.cards[-12])
 #     print(astral_radiance)
 #     print('done')
