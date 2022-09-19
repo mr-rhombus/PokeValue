@@ -43,15 +43,31 @@ class SetPage(Soup):
         return set_count
 
     def get_card_num_and_set_count(self, row):
-        set_number = row.xpath(self.set_number_locator)
+        set_number = row.xpath(self.set_number_locator)[0]
         (card_num,set_count) = [el.strip() for el in set_number.split('/')]
         return card_num, set_count
 
     def get_card_name(self, row):
-        main_name = row.xpath(".//td[@width='20%']/a/font/text()")
-        return name
+        pokemon_name = row.xpath(".//td[@width='20%']/a/font/text()")[0]
+        extra_names = row.xpath(".//td[@width='20%']/a/text()")
+        preceding_name,proceeding_name = self.clean_additional_card_names(extra_names)
+        return preceding_name + pokemon_name + proceeding_name
 
-    def clean_card_name(self, font_tag_text, a_tag_text):
+    def clean_additional_card_names(self, extra_card_names: list):
+        preceding_name = ''
+        proceeding_name = ''
+        for name in extra_card_names:
+            # Blank preceding name - appears as ' ' for cards with no preceding name
+            if len(name.strip()) == 0:
+                continue
+            # Get preceding name - ex. 'Hisuian '
+            elif name[-1] == ' ':
+                preceding_name = name
+            # Get proceeding name - ex. ' VMAX'
+            elif name[0] == ' ':
+                proceeding_name = name
+        return preceding_name, proceeding_name
+
 
     def get_cards(self):
         rows = self.html.xpath(self.card_row_locator)
