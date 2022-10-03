@@ -14,12 +14,18 @@ def main():
     # Gather expansions
     expansions = {}
     for expansion in expansion_details:
-        expansion_page = web.SetPage(expansion.url)
-        expansion.set_count = expansion_page.set_count
-        expansion.cards = expansion_page.get_cards()
-        expansions[expansion.name] = expansion
-        print(expansions[expansion.name])
-    
+
+        # HACK: Handle empty set pages (generally yet to be released)
+        try:
+            expansion_page = web.SetPage(expansion.url)
+            expansion.set_count = expansion_page.set_count
+            expansion.cards = expansion_page.get_cards()
+            expansions[expansion.name] = expansion
+            print(expansions[expansion.name])
+            
+        except IndexError:
+            print(f'Unable to gather cards for {expansion.name}, skipping...')
+            continue
 
 
 if __name__ == '__main__':
